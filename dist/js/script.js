@@ -237,10 +237,7 @@ window.addEventListener("DOMContentLoaded", () => {
       // form.append(statusMessage);
       form.insertAdjacentElement("afterend", statusMessage);
 
-      const request = new XMLHttpRequest();
-      request.open("POST", "server.php");
-
-      request.setRequestHeader("Content-type", "appliction/json");
+      // request.setRequestHeader("Content-type", "appliction/json");
 
       const formData = new FormData(form);
 
@@ -250,20 +247,23 @@ window.addEventListener("DOMContentLoaded", () => {
         object[key] = value;
       });
 
-      const json = JSON.stringify(object);
-
-      request.send(json);
-
-      request.addEventListener("load", () => {
-        if (request.status === 200) {
-          console.log(request.response);
+      fetch("server.php", {
+        method: "POST",
+        headers: { "Content-type": "appliction/json" },
+        body: JSON.stringify(object),
+      })
+        .then((data) => data.text())
+        .then((data) => {
+          console.log(data);
           showThanksModal(message.success);
-          form.reset();
           statusMessage.remove();
-        } else {
+        })
+        .catch(() => {
           showThanksModal(message.failure);
-        }
-      });
+        })
+        .finally(() => {
+          form.reset();
+        });
     });
   }
 
@@ -296,7 +296,3 @@ window.addEventListener("DOMContentLoaded", () => {
     }, 4000);
   }
 });
-
-fetch("https://jsonplaceholder.typicode.com/todos/1")
-  .then((response) => response.json())
-  .then((json) => console.log(json));
