@@ -40,7 +40,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   //TIMER
 
-  const deadline = "2021-07-25";
+  const deadline = "2021-08-31";
 
   function getTimeRemaining(endtime) {
     const t = Date.parse(endtime) - Date.parse(new Date()),
@@ -179,37 +179,40 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   }
 
-  const div = new MenuCard(
-    "img/tabs/vegy.jpg",
-    "vegy",
-    'Меню "Фитнес"',
-    'Меню "Фитнес" - это новый подход к приготовлению блюд: больше свежих овощей и фруктов. Продукт активных и здоровых людей. Это абсолютно новый продукт с оптимальной ценой и высоким качеством!',
-    9,
-    ".menu .container",
-    "menu__item",
-    "big"
-  );
-  div.render();
+  const getResource = async (url) => {
+    const res = await fetch(url);
 
-  new MenuCard(
-    "img/tabs/elite.jpg",
-    "elite",
-    "Меню “Премиум”",
-    "В меню “Премиум” мы используем не только красивый дизайн упаковки, но и качественное исполнение блюд. Красная рыба, морепродукты, фрукты - ресторанное меню без похода в ресторан!",
-    20,
-    ".menu .container",
-    "menu__item"
-  ).render();
+    if (!res.ok) {
+      throw new Error(`Could not fetch ${url}, status ${res.status}`);
+    }
+    return await res.json();
+  };
 
-  new MenuCard(
-    "img/tabs/post.jpg",
-    "post",
-    'Меню "Постное"',
-    "Меню “Постное” - это тщательный подбор ингредиентов: полное отсутствие продуктов животного происхождения, молоко из миндаля, овса, кокоса или гречки, правильное количество белков за счет тофу и импортных вегетарианских стейков. ",
-    15,
-    ".menu .container",
-    "menu__item"
-  ).render();
+  // getResource("http://localhost:3000/menu").then((data) => {
+  //   data.forEach(({ img, altimg, title, descr, price }) => {
+  //     new MenuCard(
+  //       img,
+  //       altimg,
+  //       title,
+  //       descr,
+  //       price,
+  //       ".menu .container"
+  //     ).render();
+  //   });
+  // });
+
+  axios.get("http://localhost:3000/menu").then((data) => {
+    data.data.forEach(({ img, altimg, title, descr, price }) => {
+      new MenuCard(
+        img,
+        altimg,
+        title,
+        descr,
+        price,
+        ".menu .container"
+      ).render();
+    });
+  });
 
   const forms = document.querySelectorAll("form");
 
@@ -220,14 +223,24 @@ window.addEventListener("DOMContentLoaded", () => {
   };
 
   forms.forEach((item) => {
-    postData(item);
+    bindPostData(item);
   });
 
-  function postData(form) {
+  const postData = async (url, data) => {
+    let res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: data,
+    });
+
+    return await res.json();
+  };
+
+  function bindPostData(form) {
     form.addEventListener("submit", (e) => {
       e.preventDefault();
 
-      const statusMessage = document.createElement("img");
+      let statusMessage = document.createElement("img");
       statusMessage.src = message.loading;
       statusMessage.style.cssText = `
       display: block;
@@ -241,18 +254,9 @@ window.addEventListener("DOMContentLoaded", () => {
 
       const formData = new FormData(form);
 
-      const object = {};
+      const json = JSON.stringify(Object.fromEntries(formData.entries()));
 
-      formData.forEach(function (value, key) {
-        object[key] = value;
-      });
-
-      fetch("server.php", {
-        method: "POST",
-        headers: { "Content-type": "appliction/json" },
-        body: JSON.stringify(object),
-      })
-        .then((data) => data.text())
+      postData("http://localhost:3000/requests", json)
         .then((data) => {
           console.log(data);
           showThanksModal(message.success);
@@ -295,4 +299,125 @@ window.addEventListener("DOMContentLoaded", () => {
       closeModal();
     }, 4000);
   }
+
+  // fetch("http://localhost:3000/menu")
+  //   // .then((data) => console.log(data.json));
+  //   // .then((data) => console.log(data.json))
+  //   .then((ans) => ans.json())
+  //   .then((res) => console.log(res));
+
+  //  Slider
+  const slides = document.querySelectorAll(".offer__slide"),
+    prev = document.querySelector(".offer__slider-prev"),
+    next = document.querySelector(".offer__slider-next"),
+    slidesWrapper = document.querySelector(".offer__slider-wrapper"),
+    slidesField = document.querySelector(".offer__slider-inner"),
+    width = window.getComputedStyle(slidesWrapper).width;
+  let slideIndex = 1,
+    currentSlide = document.querySelector("#current"),
+    totalSlide = document.querySelector("#total"),
+    offset = 0;
+
+  if (slides.length < 10) {
+    totalSlide.textContent = `0${slides.length}`;
+    currentSlide.textContent = `0${slideIndex}`;
+  } else {
+    totalSlide.textContent = slides.length;
+    currentSlide.textContent = slideIndex;
+  }
+
+  slidesField.style.width = 100 * slides.length + "%";
+  slides.forEach((slide) => {
+    slide.style.width = width;
+  });
+  slidesField.style.display = "flex";
+  slidesField.style.transition = "0.5s all";
+
+  slidesWrapper.style.overflow = "hidden";
+
+  next.addEventListener("click", () => {
+    if (offset == +width.slice(0, width.length - 2) * (slides.length - 1)) {
+      offset = 0;
+    } else {
+      offset += +width.slice(0, width.length - 2);
+    }
+    slidesField.style.transform = `translateX(-${offset}px)`;
+
+    if (slideIndex == slides.length) {
+      slideIndex = 1;
+    } else {
+      slideIndex++;
+    }
+
+    if (slides.length < 10) {
+      currentSlide.textContent = `0${slideIndex}`;
+    } else {
+      currentSlide.textContent = slideIndex;
+    }
+  });
+
+  prev.addEventListener("click", () => {
+    if (offset == 0) {
+      offset = +width.slice(0, width.length - 2) * (slides.length - 1);
+    } else {
+      offset -= +width.slice(0, width.length - 2);
+    }
+    slidesField.style.transform = `translateX(-${offset}px)`;
+
+    if ((slideIndex = 1)) {
+      slideIndex = slides.length;
+    } else {
+      slideIndex--;
+    }
+
+    if (slides.length < 10) {
+      currentSlide.textContent = `0${slideIndex}`;
+    } else {
+      currentSlide.textContent = slideIndex;
+    }
+  });
+  //   totalSlide.textContent =
+  //     slides.length < 9 ? `0${slides.length}` : slides.length;
+
+  // function showSlides(n) {
+  //   if (n > slides.length) {
+  //     slideIndex = 1;
+  //   }
+
+  //   if (n < 1) {
+  //     slideIndex = slides.length;
+  //   }
+  //   slides.forEach((item) => {
+  //     item.style.display = "none";
+  //   });
+
+  //   slides[slideIndex - 1].style.display = "block";
+
+  //   currentSlide.textContent = slideIndex < 10 ? `0${slideIndex}` : slideIndex;
+
+  // if (slides.length < 10) {
+  //   totalSlide.textContent = `0${slides.length}`;
+  // } else {
+  //   totalSlide.textContent = slides.length;
+  // }
+  //   // if (slideIndex < 10) {
+  //   //   currentSlide.textContent = `0${slideIndex}`;
+  //   // } else {
+  //   //   currentSlide.textContent = slideIndex;
+  //   // }
+  // }
+
+  // function plusSlides(n) {
+  //   showSlides((slideIndex += n));
+  // }
+
+  // showSlides(slideIndex);
+
+  // prev.addEventListener("click", () => {
+  //   plusSlides(-1);
+  // });
+
+  // next.addEventListener("click", () => {
+  //   plusSlides(1);
+  // });
 });
